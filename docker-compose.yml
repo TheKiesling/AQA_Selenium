@@ -10,3 +10,16 @@ services:
       - TZ=America/Guatemala
     ports:
       - 4444:4444
+
+  app:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    depends_on:
+      - selenium
+    volumes:
+      - .:/app
+    working_dir: /app
+    command: tail -f /dev/null
+    environment:
+      - TZ=America/Guatemala

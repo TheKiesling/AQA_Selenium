@@ -1,6 +1,14 @@
-FROM selenium/standalone-chrome:latest as base
+FROM python:3.11-slim
 
-WORKDIR /
+# Set working directory
+WORKDIR /app
 
-RUN bash
-RUN sudo apt-get update && sudo apt-get -y install python3-pip
+# Copy requirements and install Python dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application code
+COPY . .
+
+# Keep container running without executing main.py automatically
+CMD ["tail", "-f", "/dev/null"]

@@ -1,0 +1,12 @@
+services:
+  selenium:
+    image: selenium/standalone-chrome:97.0-20250202
+    restart: always
+    shm_size: '2gb'
+    environment:
+      - SE_NODE_OVERRIDE_MAX_SESSIONS=true
+      - SE_NODE_MAX_SESSIONS=2
+      - JAVA_OPTS=-XX:ActiveProcessorCount=2
+      - TZ=America/Guatemala
+    ports:
+      - 4444:4444

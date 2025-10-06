@@ -1,5 +1,4 @@
 import pytest
-import time
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -121,6 +120,9 @@ def test_failed_login_wrong_password(driver):
         error_message = wait.until(
             EC.presence_of_element_located((By.CLASS_NAME, "error"))
         )
+        
+        wait.until(lambda d: len(error_message.text) > 0)
+        
         assert "inválidas" in error_message.text.lower() or "error" in error_message.text.lower()
         print("✓ Error de credenciales inválidas detectado correctamente")
         

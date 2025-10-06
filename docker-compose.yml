@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   backend:
     build: ./backend
@@ -21,7 +23,7 @@ services:
     ports:
       - "3000:80"
     environment:
-      - REACT_APP_API_URL=http://login-backend:5000
+      - REACT_APP_API_URL=http://localhost:5000
     depends_on:
       backend:
         condition: service_healthy
@@ -29,7 +31,7 @@ services:
       - app-network
 
   selenium-chrome:
-    image: selenium/standalone-chrome:4.15.0-20231129
+    image: selenium/standalone-chrome:latest
     container_name: selenium-chrome
     ports:
       - "4444:4444"
@@ -40,23 +42,6 @@ services:
     environment:
       - SE_NODE_MAX_SESSIONS=5
       - SE_NODE_SESSION_TIMEOUT=300
-      - SE_SESSION_REQUEST_TIMEOUT=300
-    platform: linux/amd64
-
-  test-runner:
-    build:
-      context: ./tests
-      dockerfile: Dockerfile
-    container_name: test-runner
-    volumes:
-      - ./tests:/tests
-    networks:
-      - app-network
-    depends_on:
-      - selenium-chrome
-      - backend
-      - frontend
-    command: tail -f /dev/null
 
 networks:
   app-network:

@@ -98,23 +98,11 @@ pytest test_login.py -v --html=test-report.html
 ### Tests con Docker
 
 ```bash
-# Levantar servicios (la primera vez usa --build)
-docker-compose up -d --build
+# Levantar servicios
+docker-compose up -d
 
-# Ejecutar tests (TODOS en UNA MISMA sesión)
-# Windows:
-run_tests.bat
-
-# Linux/Mac:
-chmod +x run_tests.sh
-./run_tests.sh
-
-# O directamente con docker-compose:
-docker-compose exec test-runner pytest /tests/test_login.py -v -s
-
-# Ver la sesión en tiempo real:
-# - VNC: http://localhost:7900 (password: secret)
-# - Grid Console: http://localhost:4444
+# Ejecutar tests
+docker-compose exec selenium-chrome pytest /tests/test_login.py
 ```
 
 ## 📊 Suite de Tests

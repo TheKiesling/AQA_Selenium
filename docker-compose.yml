@@ -1,25 +1,48 @@
-services:
-  selenium:
-    image: selenium/standalone-chrome:97.0-20250202
-    restart: always
-    shm_size: '2gb'
-    environment:
-      - SE_NODE_OVERRIDE_MAX_SESSIONS=true
-      - SE_NODE_MAX_SESSIONS=2
-      - JAVA_OPTS=-XX:ActiveProcessorCount=2
-      - TZ=America/Guatemala
-    ports:
-      - 4444:4444
+version: '3.8'
 
-  app:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile
-    depends_on:
-      - selenium
-    volumes:
-      - .:/app
-    working_dir: /app
-    command: tail -f /dev/null
+services:
+  backend:
+    build: ./backend
+    container_name: login-backend
+    ports:
+      - "5000:5000"
     environment:
-      - TZ=America/Guatemala
+      - PORT=5000
+      - JWT_SECRET=mi-secreto-super-seguro-para-jwt
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:5000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  frontend:
+    build: ./frontend
+    container_name: login-frontend
+    ports:
+      - "3000:80"
+    environment:
+      - REACT_APP_API_URL=http://localhost:5000
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - app-network
+
+  selenium-chrome:
+    image: selenium/standalone-chrome:latest
+    container_name: selenium-chrome
+    ports:
+      - "4444:4444"
+      - "7900:7900"
+    shm_size: 2gb
+    networks:
+      - app-network
+    environment:
+      - SE_NODE_MAX_SESSIONS=5
+      - SE_NODE_SESSION_TIMEOUT=300
+
+networks:
+  app-network:
+    driver: bridge

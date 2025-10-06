@@ -5,6 +5,10 @@ on:
     branches: [ main, develop ]
   pull_request:
     branches: [ main, develop ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   test:
@@ -12,89 +16,114 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - name: Checkout código
+    - name: Checkout
       uses: actions/checkout@v4
 
-    - name: Configurar Node.js
+    - name: Set up Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '18'
 
-    - name: Configurar Python
+    - name: Set up Python
       uses: actions/setup-python@v5
       with:
         python-version: '3.11'
 
-    - name: Instalar dependencias del backend
-      working-directory: ./backend
-      run: |
-        npm install
+    - name: Install Chrome and ChromeDriver
+      uses: browser-actions/setup-chrome@v1
+      with:
+        chrome-version: stable
 
-    - name: Instalar dependencias del frontend
+    - name: Install backend dependencies
+      working-directory: ./backend
+      run: npm install
+
+    - name: Install frontend dependencies
       working-directory: ./frontend
-      run: |
-        npm install
+      run: npm install
 
-    - name: Instalar dependencias de tests
+    - name: Install test dependencies
       working-directory: ./tests
-      run: |
-        pip install -r requirements.txt
+      run: pip install -r requirements.txt
 
-    - name: Iniciar backend
+    - name: Start backend
       working-directory: ./backend
       run: |
-        npm start &
+        nohup npm start > backend.log 2>&1 &
         echo $! > backend.pid
         sleep 5
 
-    - name: Verificar backend
+    - name: Verify backend is running
       run: |
-        curl -f http://localhost:5000/health || exit 1
+        for i in {1..30}; do
+          if curl -f http://localhost:5000/health; then
+            echo "Backend is ready!"
+            break
+          fi
+          echo "Waiting for backend... attempt $i"
+          sleep 2
+        done
+        curl -f http://localhost:5000/health || (cat backend/backend.log && exit 1)
 
     - name: Build frontend
       working-directory: ./frontend
-      run: |
-        npm run build
+      run: npm run build
 
-    - name: Instalar servidor HTTP para frontend
-      run: |
-        npm install -g serve
+    - name: Install serve
+      run: npm install -g serve
 
-    - name: Iniciar frontend
+    - name: Start frontend
       working-directory: ./frontend
       run: |
-        serve -s build -l 3000 &
+        nohup serve -s build -l 3000 > frontend.log 2>&1 &
         echo $! > frontend.pid
         sleep 5
 
-    - name: Verificar frontend
+    - name: Verify frontend is running
       run: |
-        curl -f http://localhost:3000 || exit 1
+        for i in {1..30}; do
+          if curl -f http://localhost:3000; then
+            echo "Frontend is ready!"
+            break
+          fi
+          echo "Waiting for frontend... attempt $i"
+          sleep 2
+        done
+        curl -f http://localhost:3000 || (cat frontend/frontend.log && exit 1)
 
-    - name: Ejecutar tests de Selenium
+    - name: Run Selenium tests
       working-directory: ./tests
       run: |
         pytest test_login.py -v --html=test-report.html --self-contained-html
       continue-on-error: false
 
-    - name: Subir reporte de tests
+    - name: Upload test report
       if: always()
       uses: actions/upload-artifact@v4
       with:
         name: test-report
         path: tests/test-report.html
+        retention-days: 30
 
-    - name: Detener servicios
+    - name: Show backend logs if tests failed
+      if: failure()
+      run: |
+        echo "=== Backend Logs ==="
+        cat backend/backend.log || echo "No backend logs found"
+        echo "=== Frontend Logs ==="
+        cat frontend/frontend.log || echo "No frontend logs found"
+
+    - name: Stop services
       if: always()
       run: |
         if [ -f backend/backend.pid ]; then
-          kill $(cat backend/backend.pid) || true
+          kill $(cat backend/backend.pid) 2>/dev/null || true
         fi
         if [ -f frontend/frontend.pid ]; then
-          kill $(cat frontend/frontend.pid) || true
+          kill $(cat frontend/frontend.pid) 2>/dev/null || true
         fi
 
-    - name: Verificar resultado de tests
+    - name: Check test results
       if: failure()
       run: |
         echo "❌ Los tests fallaron. El pipeline se detendrá aquí."
@@ -108,14 +137,16 @@ jobs:
     if: success() && github.ref == 'refs/heads/develop'
     
     steps:
-    - name: Checkout código
+    - name: Checkout
       uses: actions/checkout@v4
 
-    - name: Simular deploy a staging
+    - name: Deploy to staging
       run: |
         echo "✅ Tests pasaron exitosamente"
         echo "🚀 Desplegando a entorno de STAGING..."
         echo "Entorno: STAGING"
+        echo "Branch: ${{ github.ref }}"
+        echo "Commit: ${{ github.sha }}"
         echo "Timestamp: $(date)"
 
   deploy-production:
@@ -125,12 +156,14 @@ jobs:
     if: success() && github.ref == 'refs/heads/main'
     
     steps:
-    - name: Checkout código
+    - name: Checkout
       uses: actions/checkout@v4
 
-    - name: Simular deploy a production
+    - name: Deploy to production
       run: |
         echo "✅ Tests pasaron exitosamente"
         echo "🚀 Desplegando a entorno de PRODUCTION..."
         echo "Entorno: PRODUCTION"
+        echo "Branch: ${{ github.ref }}"
+        echo "Commit: ${{ github.sha }}"
         echo "Timestamp: $(date)"

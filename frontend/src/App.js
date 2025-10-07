@@ -77,7 +77,7 @@ function App() {
             <label htmlFor="username">Usuario</label>
             <input
               type="text"
-              id="username"
+              id="user-name"
               data-testid="username-input"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
